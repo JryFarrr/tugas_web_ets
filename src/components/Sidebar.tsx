@@ -1,5 +1,6 @@
 "use client";
 
+import { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -19,12 +20,12 @@ const navItems: NavItem[] = [
 
 type SidebarProps = {
   theme: "pink" | "blue";
-  onThemeChange: (theme: "pink" | "blue") => void;
+  onThemeChange: Dispatch<SetStateAction<"pink" | "blue">>;
   themeStyles: {
     sidebarBg: string;
     sidebarShadow: string;
-    sidebarAccent: string;
     sidebarBadge: string;
+    brandText: string;
     toggleIndicator: string;
     toggleShadow: string;
     buttonBorder: string;
@@ -65,21 +66,12 @@ export function Sidebar({ theme, onThemeChange, themeStyles }: SidebarProps) {
     <aside
       className={`flex w-[260px] flex-col gap-12 rounded-[36px] p-7 text-sm text-neutral-600 backdrop-blur transition-colors duration-500 ${themeStyles.sidebarBg} ${themeStyles.sidebarShadow}`}
     >
-      <div className="space-y-3 text-neutral-700">
-        <div className="flex items-center gap-3">
-          <div className="relative h-14 w-14">
-            <span
-              className={`absolute inset-0 rounded-[20px] opacity-80 blur-[6px] ${themeStyles.sidebarAccent}`}
-              aria-hidden
-            />
-            <div className="relative flex h-full w-full items-center justify-center rounded-[20px] bg-neutral-900/85 text-lg font-semibold text-white shadow-lg">
-              SM
-            </div>
-          </div>
-          <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">
-            SoulMatch
-          </p>
-        </div>
+      <div className="space-y-2 text-neutral-700">
+        <h1
+          className={`text-2xl font-extrabold tracking-tight ${themeStyles.brandText}`}
+        >
+          SoulMatch
+        </h1>
         <p className="text-xs text-neutral-500">
           Temukan koneksi baru dan obrolan yang hangat setiap hari.
         </p>

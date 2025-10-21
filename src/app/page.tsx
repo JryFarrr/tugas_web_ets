@@ -242,11 +242,6 @@ export default function LandingPage() {
                 Buat janji hangat
               </span>
               <span className="relative flex-1 border-t border-dashed border-neutral-200" />
-              <span
-                className={`text-xs uppercase tracking-[0.3em] ${theme.heroBadgeText}`}
-              >
-                Delete all dating apps
-              </span>
             </div>
           </div>
 

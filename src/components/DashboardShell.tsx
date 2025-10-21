@@ -1,7 +1,10 @@
 import {
+  Dispatch,
   ReactNode,
+  SetStateAction,
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -29,8 +32,8 @@ const THEMES = {
     background: "bg-gradient-to-br from-[#fef4f7] via-[#fff6ed] to-[#efe8ff]",
     sidebarBg: "bg-white/80",
     sidebarShadow: "shadow-[0_45px_120px_rgba(249,115,164,0.22)]",
-    sidebarAccent: "bg-gradient-to-br from-rose-500 via-rose-400 to-orange-300",
     sidebarBadge: "text-rose-400/80",
+    brandText: "text-[#7e3f3b]",
     cardBorder: "border-white/60",
     cardBg: "bg-white/85",
     cardShadow: "shadow-[0_55px_130px_rgba(249,115,164,0.22)]",
@@ -44,8 +47,8 @@ const THEMES = {
     background: "bg-gradient-to-br from-[#f2f8ff] via-[#eef4ff] to-[#dfefff]",
     sidebarBg: "bg-white/85",
     sidebarShadow: "shadow-[0_45px_120px_rgba(56,137,209,0.18)]",
-    sidebarAccent: "bg-gradient-to-br from-sky-500 via-indigo-500 to-blue-600",
     sidebarBadge: "text-sky-400/80",
+    brandText: "text-[#1f2f4e]",
     cardBorder: "border-white/70",
     cardBg: "bg-white/90",
     cardShadow: "shadow-[0_55px_130px_rgba(79,70,229,0.18)]",
@@ -61,7 +64,7 @@ type ThemeName = keyof typeof THEMES;
 
 type DashboardThemeContextValue = {
   themeName: ThemeName;
-  setThemeName: (theme: ThemeName) => void;
+  setThemeName: Dispatch<SetStateAction<ThemeName>>;
   styles: (typeof THEMES)[ThemeName];
 };
 
@@ -92,8 +95,21 @@ export function DashboardShell({
   headerShowSearch = true,
   profileImageSrc,
 }: DashboardShellProps) {
-  const [themeName, setThemeName] = useState<ThemeName>("pink");
+  const [themeName, setThemeName] = useState<ThemeName>(() => {
+    if (typeof window === "undefined") {
+      return "pink";
+    }
+    const stored = window.localStorage.getItem("soulmatch-theme");
+    return stored === "blue" ? "blue" : "pink";
+  });
   const theme = useMemo(() => THEMES[themeName], [themeName]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("soulmatch-theme", themeName);
+    }
+  }, [themeName]);
+
   const providerValue = useMemo(
     () => ({
       themeName,

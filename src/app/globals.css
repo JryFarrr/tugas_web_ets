@@ -13,13 +13,13 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-accent: var(--accent-primary);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-poppins);
 }
 
 body {
   background: radial-gradient(circle at 20% 20%, #fff9f6 0%, #fef2f6 35%, #efe8ff 100%);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-poppins), "Poppins", system-ui, -apple-system, sans-serif;
   min-height: 100vh;
 }
 
