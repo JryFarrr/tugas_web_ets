@@ -1,26 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fef2f6;
+  --foreground: #271b29;
+  --accent-primary: #f96f77;
+  --accent-secondary: #f2b8a1;
+  --accent-soft: #ffe3ec;
+  --card-soft: rgba(255, 255, 255, 0.78);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent-primary);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(circle at 20% 20%, #fff9f6 0%, #fef2f6 35%, #efe8ff 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+input,
+button {
+  font-family: inherit;
 }
