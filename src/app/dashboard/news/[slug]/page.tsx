@@ -32,7 +32,13 @@ const externalIcon = (
 
 export default function ArticleDetail() {
   const params = useParams<{ slug: string }>();
-  const slug = typeof params?.slug === "string" ? params.slug : Array.isArray(params?.slug) ? params?.slug[0] : "";
+  const slug =
+    typeof params?.slug === "string"
+      ? params.slug
+      : Array.isArray(params?.slug)
+      ? params?.slug[0]
+      : "";
+
   const article = articles.find((item) => item.slug === slug);
 
   if (!article) {
@@ -99,113 +105,109 @@ function ArticleContent({ article }: { article: ArticleMeta }) {
     [themeName],
   );
 
-  if (!article) {
-    notFound();
-  }
-
   return (
     <article className={styles.container}>
-        <header className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
-            {article.tags.map((tag) => (
-              <span key={tag} className={styles.tag}>
-                {tag}
-              </span>
-            ))}
-          </div>
-          <h1 className="text-3xl font-semibold text-neutral-900">
-            {article.title}
-          </h1>
-          <p className="text-sm text-neutral-500">{article.excerpt}</p>
-          <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-500">
-            <time>{dateFormatter.format(new Date(article.date))}</time>
-            <Link
-              href={article.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.sourceLink}
-            >
-              Baca sumber asli
-              {externalIcon}
-            </Link>
-          </div>
-        </header>
-
-        <section className="space-y-10">
-          {article.sections.map((section, index) => {
-            if (section.type === "intro") {
-              return (
-                <p key={index} className="text-base leading-relaxed text-neutral-600">
-                  {section.text}
-                </p>
-              );
-            }
-
-            if (section.type === "paragraph") {
-              return (
-                <div key={index} className="space-y-3">
-                  {section.title ? (
-                    <h2 className="text-xl font-semibold text-neutral-900">
-                      {section.title}
-                    </h2>
-                  ) : null}
-                  <p className="text-base leading-relaxed text-neutral-600">
-                    {section.text}
-                  </p>
-                </div>
-              );
-            }
-
-            if (section.type === "list") {
-              return (
-                <div key={index} className="space-y-4">
-                  <h2 className="text-xl font-semibold text-neutral-900">
-                    {section.title}
-                  </h2>
-                  <ol className="space-y-3 text-base text-neutral-600">
-                    {section.items.map((item, order) => (
-                      <li key={item} className="flex gap-3">
-                        <span className={styles.numberBadge}>{order + 1}</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              );
-            }
-
-            return null;
-          })}
-        </section>
-
-        <footer className="flex flex-wrap items-center justify-between gap-4 text-sm text-neutral-400">
-          <Link href="/dashboard" className={styles.backLink}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="15 18 9 12 15 6" />
-              <line x1="9" x2="21" y1="12" y2="12" />
-              <line x1="3" x2="3" y1="5" y2="19" />
-            </svg>
-            Kembali ke daftar berita
-          </Link>
+      <header className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+          {article.tags.map((tag) => (
+            <span key={tag} className={styles.tag}>
+              {tag}
+            </span>
+          ))}
+        </div>
+        <h1 className="text-3xl font-semibold text-neutral-900">
+          {article.title}
+        </h1>
+        <p className="text-sm text-neutral-500">{article.excerpt}</p>
+        <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-500">
+          <time>{dateFormatter.format(new Date(article.date))}</time>
           <Link
             href={article.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={styles.externalButton}
+            className={styles.sourceLink}
           >
-            Kunjungi sumber asli
+            Baca sumber asli
             {externalIcon}
           </Link>
-        </footer>
+        </div>
+      </header>
+
+      <section className="space-y-10">
+        {article.sections.map((section, index) => {
+          if (section.type === "intro") {
+            return (
+              <p key={index} className="text-base leading-relaxed text-neutral-600">
+                {section.text}
+              </p>
+            );
+          }
+
+          if (section.type === "paragraph") {
+            return (
+              <div key={index} className="space-y-3">
+                {section.title ? (
+                  <h2 className="text-xl font-semibold text-neutral-900">
+                    {section.title}
+                  </h2>
+                ) : null}
+                <p className="text-base leading-relaxed text-neutral-600">
+                  {section.text}
+                </p>
+              </div>
+            );
+          }
+
+          if (section.type === "list") {
+            return (
+              <div key={index} className="space-y-4">
+                <h2 className="text-xl font-semibold text-neutral-900">
+                  {section.title}
+                </h2>
+                <ol className="space-y-3 text-base text-neutral-600">
+                  {section.items.map((item, order) => (
+                    <li key={item} className="flex gap-3">
+                      <span className={styles.numberBadge}>{order + 1}</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            );
+          }
+
+          return null;
+        })}
+      </section>
+
+      <footer className="flex flex-wrap items-center justify-between gap-4 text-sm text-neutral-400">
+        <Link href="/dashboard" className={styles.backLink}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="15 18 9 12 15 6" />
+            <line x1="9" x2="21" y1="12" y2="12" />
+            <line x1="3" x2="3" y1="5" y2="19" />
+          </svg>
+          Kembali ke daftar berita
+        </Link>
+        <Link
+          href={article.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.externalButton}
+        >
+          Kunjungi sumber asli
+          {externalIcon}
+        </Link>
+      </footer>
     </article>
   );
 }
