@@ -336,14 +336,15 @@ export default function MatchPage() {
     setSelectedFilters((prev) => ({ ...prev, online: !prev.online }));
   };
 
-  const handleMessageProfile = useCallback(
-    async (profile: MatchProfile) => {
+const handleMessageProfile = useCallback(
+  async (profile: Profile) => {
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
         const token = session?.access_token;
-        if (!token || !profile.id) {
+        const targetId = profile.id;
+        if (!token || !targetId) {
           router.push("/dashboard/messages");
           return;
         }
@@ -354,7 +355,7 @@ export default function MatchPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ targetUserId: profile.id }),
+          body: JSON.stringify({ targetUserId: targetId }),
         });
 
         if (!response.ok) {
@@ -428,7 +429,7 @@ type MatchContentProps = {
   onDropdownSelect: (id: DropdownFilterId, value: string) => void;
   onToggleOnline: () => void;
   onSelectProfile: (profile: Profile) => void;
-  onMessageProfile: (profile: MatchProfile) => void;
+  onMessageProfile: (profile: Profile) => void;
   customInputs: Record<DropdownFilterId, string>;
   onCustomInputChange: (id: DropdownFilterId, value: string) => void;
   onApplyCustom: (id: DropdownFilterId) => void;
