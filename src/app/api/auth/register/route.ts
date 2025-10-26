@@ -41,11 +41,17 @@ export async function POST(request: Request) {
   const { email, name, password } = parsed.data;
 
   try {
-    const { data: existingUser } = await supabaseAdmin.auth.admin.getUserByEmail(
-      email,
-    );
+    const { data: existingUsers, error: listError } =
+      await supabaseAdmin.auth.admin.listUsers({
+        email,
+        perPage: 1,
+      });
 
-    if (existingUser) {
+    if (listError) {
+      console.warn("[register] Gagal memeriksa user existing:", listError);
+    }
+
+    if (existingUsers?.users?.length) {
       return NextResponse.json(
         {
           status: "error",
