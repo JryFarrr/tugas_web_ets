@@ -26,14 +26,18 @@ async function assertAdmin(request: Request) {
   return { userId: authData.user.id, role: adminRow.role };
 }
 
+type RouteContext<P> = { params: Promise<P> };
+
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } },
+  context: RouteContext<{ id: string }>,
 ) {
   const verify = await assertAdmin(request);
   if ("error" in verify) {
     return verify.error;
   }
+
+  const { id } = await context.params;
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") {
@@ -104,7 +108,7 @@ export async function PATCH(
   const { error } = await supabaseAdmin
     .from("profiles")
     .update(payload)
-    .eq("id", params.id);
+    .eq("id", id);
 
   if (error) {
     return NextResponse.json(

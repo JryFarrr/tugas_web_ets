@@ -26,14 +26,18 @@ async function assertSuperadmin(request: Request) {
   return { requesterId: authData.user.id };
 }
 
+type RouteContext<P> = { params: Promise<P> };
+
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } },
+  context: RouteContext<{ id: string }>,
 ) {
   const verify = await assertSuperadmin(request);
   if ("error" in verify) {
     return verify.error;
   }
+
+  const { id } = await context.params;
 
   const body = await request.json().catch(() => null);
   const role = body?.role as "superadmin" | "admin" | undefined;
@@ -47,7 +51,7 @@ export async function PATCH(
   const { error: updateError } = await supabaseAdmin
     .from("admin_users")
     .update({ role })
-    .eq("id", params.id);
+    .eq("id", id);
 
   if (updateError) {
     return NextResponse.json(
@@ -56,7 +60,7 @@ export async function PATCH(
     );
   }
 
-  await supabaseAdmin.auth.admin.updateUserById(params.id, {
+  await supabaseAdmin.auth.admin.updateUserById(id, {
     user_metadata: { role },
   });
 
@@ -65,14 +69,14 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } },
+  context: RouteContext<{ id: string }>,
 ) {
   const verify = await assertSuperadmin(request);
   if ("error" in verify) {
     return verify.error;
   }
 
-  const adminId = params.id;
+  const { id: adminId } = await context.params;
 
   const { error: deleteRowError } = await supabaseAdmin
     .from("admin_users")
