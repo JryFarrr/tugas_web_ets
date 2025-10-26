@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { StaticImageData } from "next/image";
+import Link from "next/link";
 import { ReactNode, useMemo, useState } from "react";
 
 import { useDashboardTheme } from "@/components/DashboardShell";
@@ -106,13 +107,19 @@ export function HeaderBar({
           <span className={styles.badge}>
             {statusBadge}
           </span>
-          <Image
-            src={profileImageSrc ?? "https://i.pravatar.cc/80?img=5"}
-            alt="Foto profil"
-            width={44}
-            height={44}
-            className={`h-11 w-11 rounded-full object-cover shadow-lg ${styles.avatarShadow}`}
-          />
+          <Link
+            href="/dashboard/profile"
+            aria-label="Buka profil saya"
+            className="transition hover:scale-[1.03]"
+          >
+            <Image
+              src={profileImageSrc ?? "https://i.pravatar.cc/80?img=5"}
+              alt="Foto profil"
+              width={44}
+              height={44}
+              className={`h-11 w-11 rounded-full object-cover shadow-lg ${styles.avatarShadow}`}
+            />
+          </Link>
         </div>
       </div>
 

@@ -1,26 +1,35 @@
-﻿"use client";
+"use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { DashboardShell, useDashboardTheme } from "@/components/DashboardShell";
 import { ProfileCard, type Profile } from "@/components/ProfileCard";
 import { ProfileDetail } from "@/components/ProfileDetail";
+import { supabase } from "@/lib/supabaseClient";
 
-type DropdownFilterId = "age" | "location" | "occupation" | "interest";
+type DropdownFilterId = "age" | "location" | "pekerjaan" | "interest";
 
-type FilterOption =
-  | { id: DropdownFilterId; label: string; type: "dropdown"; options: string[] }
-  | { id: "online"; label: string; type: "toggle" };
+type DropdownFilterOption = {
+  id: DropdownFilterId;
+  label: string;
+  type: "dropdown";
+  options: string[];
+  allowCustom?: boolean;
+  customPlaceholder?: string;
+};
+
+type FilterOption = DropdownFilterOption | { id: "online"; label: string; type: "toggle" };
 
 const AGE_RANGES = [
   "Semua",
-  "15-20",
-  "20-25",
-  "25-30",
-  "30-35",
-  "35-40",
-  "40-45",
-  "45-50",
+  "18-22",
+  "23-27",
+  "28-32",
+  "33-37",
+  "38-42",
+  "43-47",
+  "48-52",
 ];
 
 const LOCATION_OPTIONS = [
@@ -36,7 +45,7 @@ const LOCATION_OPTIONS = [
   "Makassar",
 ];
 
-const OCCUPATION_OPTIONS = [
+const PEKERJAAN_OPTIONS = [
   "Semua",
   "Kuliner",
   "Musik",
@@ -61,120 +70,59 @@ const INTEREST_OPTIONS = [
 
 const filterOptions: FilterOption[] = [
   { id: "age", label: "Umur", type: "dropdown", options: AGE_RANGES },
-  { id: "location", label: "Lokasi", type: "dropdown", options: LOCATION_OPTIONS },
-  { id: "occupation", label: "Pekerjaan", type: "dropdown", options: OCCUPATION_OPTIONS },
-  { id: "interest", label: "Interest", type: "dropdown", options: INTEREST_OPTIONS },
+  {
+    id: "location",
+    label: "Lokasi",
+    type: "dropdown",
+    options: LOCATION_OPTIONS,
+    allowCustom: true,
+    customPlaceholder: "Ketik kota lain...",
+  },
+  {
+    id: "pekerjaan",
+    label: "Pekerjaan",
+    type: "dropdown",
+    options: PEKERJAAN_OPTIONS,
+    allowCustom: true,
+    customPlaceholder: "Cari pekerjaan lain...",
+  },
+  {
+    id: "interest",
+    label: "Interest",
+    type: "dropdown",
+    options: INTEREST_OPTIONS,
+    allowCustom: true,
+    customPlaceholder: "Ketik interest lain...",
+  },
   { id: "online", label: "Online", type: "toggle" },
 ];
 
+type ApiProfile = {
+  id: string;
+  name: string | null;
+  age: number | null;
+  city: string | null;
+  pekerjaan: string | null;
+  interests: string[] | null;
+  about: string | null;
+  mainPhoto: string | null;
+};
+
 type MatchProfile = Profile & {
+  id: string;
   city: string;
   age: number;
-  occupation: string;
-  occupationTag: string;
+  pekerjaan: string | null;
+  interests: string[];
+  about: string | null;
   interestTag: string;
   online: boolean;
 };
 
-const rawProfiles: Array<Omit<MatchProfile, "age"> & { age: number }> = [
-  {
-    name: "Mira Amelia",
-    age: 25,
-    city: "Jakarta",
-    compatibility: 95,
-    vibe: "Food Story",
-    occupation: "Food blogger",
-    occupationTag: "Kuliner",
-    interestTag: "Kuliner",
-    online: true,
-    bio: "Gemar membuat ulasan kafe hangat dan mengeksplor menu plant-based terbaru. Cari partner eksplor kuliner yang nyaman diajak ngobrol panjang.",
-    interests: ["Culinary trip", "Food tasting", "Street photography"],
-    imageUrl:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    name: "Devan Pratama",
-    age: 27,
-    city: "Bandung",
-    compatibility: 92,
-    vibe: "Playlist Maker",
-    occupation: "Kurator musik",
-    occupationTag: "Musik",
-    interestTag: "Musik",
-    online: true,
-    bio: "Mengelola playlist untuk ruang kerja kreatif. Suka berbagi lagu baru lengkap dengan cerita di baliknya.",
-    interests: ["Vinyl hunting", "Live session", "Bedah lirik"],
-    imageUrl:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    name: "Raisa Nurain",
-    age: 24,
-    city: "Depok",
-    compatibility: 90,
-    vibe: "Cat Mom",
-    occupation: "Ilmuwan data",
-    occupationTag: "Teknologi",
-    interestTag: "Permainan",
-    online: false,
-    bio: "Pecinta kucing dan penikmat board game. Ingin bertemu teman yang santai namun suportif terhadap mimpi kariernya.",
-    interests: ["Board game", "Cat cafe", "Coding club"],
-    imageUrl:
-      "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    name: "Vino Ardi",
-    age: 28,
-    city: "Surabaya",
-    compatibility: 88,
-    vibe: "Sunset Hunter",
-    occupation: "Videografer perjalanan",
-    occupationTag: "Videografer",
-    interestTag: "Outdoor",
-    online: true,
-    bio: "Menyusun vlog perjalanan rasa dokumenter. Senang membuat itinerary tipis-tipis bersama orang baru.",
-    interests: ["Hiking ringan", "Sunset picnic", "Drone footage"],
-    imageUrl:
-      "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    name: "Kezia L.",
-    age: 26,
-    city: "Medan",
-    compatibility: 86,
-    vibe: "Open Mic",
-    occupation: "Mahasiswa komunikasi",
-    occupationTag: "Mahasiswa",
-    interestTag: "Seni",
-    online: true,
-    bio: "Sering jadi host open mic di komunitas kreatif. Cari teman yang suka spontan dan mendukung ruang berekspresi.",
-    interests: ["Open mic", "Creative writing", "Coffee tasting"],
-    imageUrl:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    name: "Gilang Adji",
-    age: 29,
-    city: "Yogyakarta",
-    compatibility: 84,
-    vibe: "Travel Light",
-    occupation: "UX Researcher",
-    occupationTag: "Riset",
-    interestTag: "Travel",
-    online: false,
-    bio: "Suka merencanakan perjalanan spontan dengan budget tipis. Lagi cari teman tukar itinerari sambil kopi sore.",
-    interests: ["Weekend getaway", "UX meetup", "Street food"],
-    imageUrl:
-      "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=900&q=80",
-  },
-];
-
-const matchProfiles: MatchProfile[] = rawProfiles;
-
 type SelectedFilters = {
   age: string;
   location: string;
-  occupation: string;
+  pekerjaan: string;
   interest: string;
   online: boolean;
 };
@@ -182,13 +130,56 @@ type SelectedFilters = {
 const DEFAULT_FILTERS: SelectedFilters = {
   age: "",
   location: "",
-  occupation: "",
+  pekerjaan: "",
   interest: "",
   online: false,
 };
 
+const FALLBACK_IMAGE = "https://i.pravatar.cc/320";
+
+function computeCompatibility(seed: string) {
+  let hash = 0;
+  for (const char of seed) {
+    hash = (hash << 5) - hash + char.charCodeAt(0);
+    hash |= 0;
+  }
+  return 70 + Math.abs(hash % 25);
+}
+
+function computeOnline(seed: string) {
+  let hash = 0;
+  for (const char of seed) {
+    hash = char.charCodeAt(0) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash % 2) === 1;
+}
+
+function transformProfile(profile: ApiProfile): MatchProfile {
+  const interests = Array.isArray(profile.interests) ? profile.interests : [];
+  const age = profile.age && profile.age > 0 ? profile.age : 25;
+  const interestTag = interests[0] ?? "SoulMatch";
+  const vibe = profile.pekerjaan ?? "SoulMatch";
+
+  return {
+    id: profile.id,
+    name: profile.name ?? "Pengguna SoulMatch",
+    age,
+    city: profile.city ?? "Lokasi belum diatur",
+    compatibility: computeCompatibility(profile.id),
+    vibe,
+    imageUrl: profile.mainPhoto ?? `${FALLBACK_IMAGE}?u=${profile.id}`,
+    occupation: profile.pekerjaan ?? undefined,
+    pekerjaan: profile.pekerjaan,
+    interests,
+    about: profile.about,
+    interestTag,
+    online: computeOnline(profile.id),
+  };
+}
+
 function ageMatchesRange(age: number, range: string) {
   if (!range) return true;
+  if (range.toLowerCase() === "semua") return true;
   const [min, max] = range.split("-").map(Number);
   if (Number.isNaN(min) || Number.isNaN(max)) return true;
   return age >= min && age <= max;
@@ -196,21 +187,80 @@ function ageMatchesRange(age: number, range: string) {
 
 export default function MatchPage() {
   const [query, setQuery] = useState("");
-  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>(
-    DEFAULT_FILTERS,
-  );
-  const [openDropdown, setOpenDropdown] = useState<DropdownFilterId | null>(
-    null,
-  );
+  const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>(DEFAULT_FILTERS);
+  const [openDropdown, setOpenDropdown] = useState<DropdownFilterId | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+  const [customInputs, setCustomInputs] = useState<Record<DropdownFilterId, string>>({
+    age: "",
+    location: "",
+    pekerjaan: "",
+    interest: "",
+  });
+  const [profiles, setProfiles] = useState<MatchProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfiles() {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+
+      if (!session) {
+        if (!cancelled) {
+          setProfiles([]);
+          setError("Sesi tidak ditemukan. Silakan login kembali.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/match/profiles", {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.message ?? "Gagal memuat data profil.");
+        }
+
+        const payload = (await response.json()) as { profiles?: ApiProfile[] };
+        const mapped = (payload.profiles ?? []).map(transformProfile);
+        const filtered = mapped.filter((profile) => profile.id !== session.user.id);
+        if (!cancelled) {
+          setProfiles(filtered);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setProfiles([]);
+          setError(err instanceof Error ? err.message : "Gagal memuat data profil.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadProfiles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredProfiles = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return matchProfiles.filter((profile) => {
+    return profiles.filter((profile) => {
       const matchesSearch = normalized
-        ? `${profile.name} ${profile.city} ${profile.vibe}`
-            .toLowerCase()
-            .includes(normalized)
+        ? `${profile.name} ${profile.city} ${profile.vibe}`.toLowerCase().includes(normalized)
         : true;
 
       if (!matchesSearch) {
@@ -221,27 +271,29 @@ export default function MatchPage() {
         return false;
       }
 
-      if (
-        selectedFilters.location &&
-        profile.city.toLowerCase() !== selectedFilters.location.toLowerCase()
-      ) {
-        return false;
+      if (selectedFilters.location) {
+        const target = selectedFilters.location.toLowerCase();
+        if (!profile.city.toLowerCase().includes(target)) {
+          return false;
+        }
       }
 
-      if (
-        selectedFilters.occupation &&
-        profile.occupationTag.toLowerCase() !==
-          selectedFilters.occupation.toLowerCase()
-      ) {
-        return false;
+      if (selectedFilters.pekerjaan) {
+        const target = selectedFilters.pekerjaan.toLowerCase();
+        const jobSources = [profile.pekerjaan, profile.occupation];
+        const matchesJob = jobSources.some((source) => source?.toLowerCase().includes(target));
+        if (!matchesJob) {
+          return false;
+        }
       }
 
-      if (
-        selectedFilters.interest &&
-        profile.interestTag.toLowerCase() !==
-          selectedFilters.interest.toLowerCase()
-      ) {
-        return false;
+      if (selectedFilters.interest) {
+        const target = selectedFilters.interest.toLowerCase();
+        const interestSources = [profile.interestTag, ...profile.interests];
+        const matchesInterest = interestSources.some((source) => source?.toLowerCase().includes(target));
+        if (!matchesInterest) {
+          return false;
+        }
       }
 
       if (selectedFilters.online && !profile.online) {
@@ -250,13 +302,33 @@ export default function MatchPage() {
 
       return true;
     });
-  }, [query, selectedFilters]);
+  }, [profiles, query, selectedFilters]);
 
   const handleDropdownSelect = (id: DropdownFilterId, value: string) => {
     setSelectedFilters((prev) => ({
       ...prev,
       [id]: value === "Semua" ? "" : value,
     }));
+    setCustomInputs((prev) => ({ ...prev, [id]: "" }));
+    setOpenDropdown(null);
+  };
+
+  const handleCustomInputChange = (id: DropdownFilterId, value: string) => {
+    setCustomInputs((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleApplyCustom = (id: DropdownFilterId) => {
+    const trimmed = customInputs[id].trim();
+    setSelectedFilters((prev) => ({
+      ...prev,
+      [id]: trimmed,
+    }));
+    setOpenDropdown(null);
+  };
+
+  const handleClearFilter = (id: DropdownFilterId) => {
+    setSelectedFilters((prev) => ({ ...prev, [id]: "" }));
+    setCustomInputs((prev) => ({ ...prev, [id]: "" }));
     setOpenDropdown(null);
   };
 
@@ -264,40 +336,91 @@ export default function MatchPage() {
     setSelectedFilters((prev) => ({ ...prev, online: !prev.online }));
   };
 
-  return (
-    <>
-      <DashboardShell
-        headerChips={[]}
-        headerShowSearch
-        headerSearchValue={query}
-        onHeaderSearchChange={setQuery}
-        headerSearchPlaceholder="Cari nama, kota, atau vibe SoulMatch..."
-        headerSubtitle="Match"
-        headerHeadline="Temukan pasangan sesuai vibe kamu"
-        headerStatusBadge={`${filteredProfiles.length} kandidat ditemukan`}
-      >
-        <MatchContent
-          filteredProfiles={filteredProfiles}
-          selectedFilters={selectedFilters}
-          openDropdown={openDropdown}
-          onOpenDropdownChange={setOpenDropdown}
-          onDropdownSelect={handleDropdownSelect}
-          onToggleOnline={handleToggleOnline}
-          onSelectProfile={setSelectedProfile}
-        />
-      </DashboardShell>
+  const handleMessageProfile = useCallback(
+    async (profile: MatchProfile) => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token || !profile.id) {
+          router.push("/dashboard/messages");
+          return;
+        }
 
-      {selectedProfile ? (
-        <ProfileDetail
-          profile={selectedProfile}
-          onClose={() => setSelectedProfile(null)}
-        />
-      ) : null}
-    </>
+        const response = await fetch("/api/messages/open", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ targetUserId: profile.id }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Gagal membuka percakapan.");
+        }
+
+        const { conversationId } = (await response.json()) as {
+          conversationId: string;
+        };
+
+        if (conversationId) {
+          router.push(`/dashboard/messages?chat=${conversationId}`);
+        } else {
+          router.push("/dashboard/messages");
+        }
+      } catch (err) {
+        console.error("[MatchPage] handleMessageProfile", err);
+        router.push("/dashboard/messages");
+      }
+    },
+    [router],
+  );
+
+  return (
+    <DashboardShell
+      headerChips={[]}
+      headerShowSearch
+      headerSearchValue={query}
+      onHeaderSearchChange={setQuery}
+      headerSearchPlaceholder="Cari nama, kota, atau vibe SoulMatch..."
+      headerSubtitle="Match"
+      headerHeadline="Temukan pasangan sesuai vibe kamu"
+      headerStatusBadge={
+        loading
+          ? "Memuat kandidat..."
+          : error
+          ? "Gagal memuat kandidat"
+          : `${filteredProfiles.length} kandidat ditemukan`
+      }
+    >
+      <MatchContent
+        loading={loading}
+        error={error}
+        filteredProfiles={filteredProfiles}
+        selectedFilters={selectedFilters}
+        openDropdown={openDropdown}
+        onOpenDropdownChange={setOpenDropdown}
+        onDropdownSelect={handleDropdownSelect}
+        onToggleOnline={handleToggleOnline}
+        onSelectProfile={setSelectedProfile}
+        onMessageProfile={handleMessageProfile}
+        customInputs={customInputs}
+        onCustomInputChange={handleCustomInputChange}
+        onApplyCustom={handleApplyCustom}
+        onClearFilter={handleClearFilter}
+        selectedProfile={selectedProfile}
+        onCloseProfile={() => setSelectedProfile(null)}
+        isEmpty={!profiles.length && !loading && !error}
+      />
+    </DashboardShell>
   );
 }
 
 type MatchContentProps = {
+  loading: boolean;
+  error: string | null;
   filteredProfiles: MatchProfile[];
   selectedFilters: SelectedFilters;
   openDropdown: DropdownFilterId | null;
@@ -305,9 +428,19 @@ type MatchContentProps = {
   onDropdownSelect: (id: DropdownFilterId, value: string) => void;
   onToggleOnline: () => void;
   onSelectProfile: (profile: Profile) => void;
+  onMessageProfile: (profile: MatchProfile) => void;
+  customInputs: Record<DropdownFilterId, string>;
+  onCustomInputChange: (id: DropdownFilterId, value: string) => void;
+  onApplyCustom: (id: DropdownFilterId) => void;
+  onClearFilter: (id: DropdownFilterId) => void;
+  selectedProfile: Profile | null;
+  onCloseProfile: () => void;
+  isEmpty: boolean;
 };
 
 function MatchContent({
+  loading,
+  error,
   filteredProfiles,
   selectedFilters,
   openDropdown,
@@ -315,6 +448,14 @@ function MatchContent({
   onDropdownSelect,
   onToggleOnline,
   onSelectProfile,
+  onMessageProfile,
+  customInputs,
+  onCustomInputChange,
+  onApplyCustom,
+  onClearFilter,
+  selectedProfile,
+  onCloseProfile,
+  isEmpty,
 }: MatchContentProps) {
   const { themeName } = useDashboardTheme();
   const isPink = themeName === "pink";
@@ -333,6 +474,7 @@ function MatchContent({
               "bg-gradient-to-r from-rose-500 via-rose-400 to-orange-300 text-white shadow-md shadow-rose-200/70",
             emptyState:
               "rounded-3xl border border-dashed border-rose-200 bg-white/80 p-10 text-center text-sm text-neutral-400 transition-colors duration-500",
+            inputRing: "focus:ring-rose-200",
           }
         : {
             summaryCard:
@@ -345,34 +487,35 @@ function MatchContent({
               "bg-gradient-to-r from-sky-500 via-indigo-500 to-blue-600 text-white shadow-md shadow-sky-200/70",
             emptyState:
               "rounded-3xl border border-dashed border-sky-200 bg-white/85 p-10 text-center text-sm text-neutral-400 transition-colors duration-500",
+            inputRing: "focus:ring-sky-200",
           },
     [isPink],
   );
 
   const currentDropdownOptions =
     openDropdown &&
-    (filterOptions.find(
-      (option) => option.type === "dropdown" && option.id === openDropdown,
-    ) as Extract<FilterOption, { type: "dropdown" }> | undefined);
+    (filterOptions.find((option) => option.type === "dropdown" && option.id === openDropdown) as
+      | DropdownFilterOption
+      | undefined);
 
   return (
     <section className="space-y-6 transition-colors duration-500">
       <div className={styles.summaryCard}>
-        <h2 className="text-xl font-semibold text-neutral-800">
-          Hasil pencarian hangat
-        </h2>
+        <h2 className="text-xl font-semibold text-neutral-800">Hasil pencarian hangat</h2>
         <p className="mt-2 text-sm text-neutral-500">
-          {filteredProfiles.length > 0
-            ? `Menampilkan ${filteredProfiles.length} kecocokan yang siap diajak ngobrol.`
+          {loading
+            ? "Sedang memuat rekomendasi terbaru..."
+            : error
+            ? "Terjadi kendala saat memuat data. Coba perbarui halaman."
+            : filteredProfiles.length > 0
+            ? `${filteredProfiles.length} kecocokan yang siap diajak ngobrol.`
             : "Belum ada nama yang cocok dengan pencarianmu. Coba ketik kata kunci lain."}
         </p>
       </div>
 
       <div className="space-y-3">
         <div className={styles.filterBar}>
-          <span className="text-sm font-semibold text-neutral-500">
-            Filters
-          </span>
+          <span className="text-sm font-semibold text-neutral-500">Filters</span>
           <div className="flex flex-wrap gap-2">
             {filterOptions.map((filter) => {
               if (filter.type === "toggle") {
@@ -389,18 +532,14 @@ function MatchContent({
               }
 
               const value = selectedFilters[filter.id];
-              const displayLabel = value
-                ? `${filter.label}: ${value}`
-                : filter.label;
+              const displayLabel = value ? `${filter.label}: ${value}` : filter.label;
               const isActive = Boolean(value);
 
               return (
                 <button
                   key={filter.id}
                   onClick={() =>
-                    onOpenDropdownChange(
-                      openDropdown === filter.id ? null : filter.id,
-                    )
+                    onOpenDropdownChange(openDropdown === filter.id ? null : filter.id)
                   }
                   className={`rounded-full px-4 py-2 text-xs font-semibold transition ${isActive ? styles.filterActive : styles.filterInactive}`}
                 >
@@ -418,8 +557,7 @@ function MatchContent({
                 key={option}
                 onClick={() => onDropdownSelect(currentDropdownOptions.id, option)}
                 className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
-                  selectedFilters[currentDropdownOptions.id] ===
-                    (option === "Semua" ? "" : option)
+                  selectedFilters[currentDropdownOptions.id] === (option === "Semua" ? "" : option)
                     ? styles.filterActive
                     : styles.filterInactive
                 }`}
@@ -427,27 +565,78 @@ function MatchContent({
                 {option}
               </button>
             ))}
+
+            {currentDropdownOptions.allowCustom ? (
+              <div className="mt-3 flex w-full flex-col gap-2 border-t border-neutral-100 pt-3 sm:flex-row sm:items-center">
+                <input
+                  value={customInputs[currentDropdownOptions.id]}
+                  onChange={(event) =>
+                    onCustomInputChange(currentDropdownOptions.id, event.target.value)
+                  }
+                  placeholder={
+                    currentDropdownOptions.customPlaceholder ?? "Ketik manual..."
+                  }
+                  className={`flex-1 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm text-neutral-600 focus:outline-none focus:ring-2 ${styles.inputRing} sm:max-w-xs`}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onApplyCustom(currentDropdownOptions.id)}
+                    className={`rounded-full px-4 py-2 text-xs font-semibold transition ${styles.filterActive}`}
+                  >
+                    Terapkan
+                  </button>
+                  {selectedFilters[currentDropdownOptions.id] ? (
+                    <button
+                      onClick={() => onClearFilter(currentDropdownOptions.id)}
+                      className={`rounded-full px-4 py-2 text-xs font-semibold transition ${styles.filterInactive}`}
+                    >
+                      Reset
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {filteredProfiles.map((profile) => (
-          <ProfileCard
-            key={profile.name}
-            profile={profile}
-            onSelect={onSelectProfile}
-          />
-        ))}
-      </div>
-
-      {filteredProfiles.length === 0 ? (
-        <div className={styles.emptyState}>
-          Tidak ada kecocokan untuk pencarian tersebut. Ubah kata kunci dan coba
-          lagi.
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-72 animate-pulse rounded-3xl border border-neutral-100 bg-white/60"
+            />
+          ))}
         </div>
+      ) : error ? (
+        <div className="rounded-3xl border border-rose-200 bg-rose-50/80 p-6 text-sm text-rose-500">
+          {error}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filteredProfiles.map((profile) => (
+            <ProfileCard
+              key={profile.id}
+              profile={profile}
+              onSelect={onSelectProfile}
+              onMessage={onMessageProfile}
+            />
+          ))}
+        </div>
+      )}
+
+      {filteredProfiles.length === 0 && !loading ? (
+        <div className={`${styles.emptyState} text-sm`}>
+          {isEmpty
+            ? "Belum ada pengguna lain yang bisa ditampilkan. Ajak temanmu bergabung dulu ya!"
+            : "Tidak ada kecocokan yang sesuai filter. Coba ubah kata kunci."}
+        </div>
+      ) : null}
+
+      {selectedProfile ? (
+        <ProfileDetail profile={selectedProfile} onClose={onCloseProfile} />
       ) : null}
     </section>
   );
 }
-

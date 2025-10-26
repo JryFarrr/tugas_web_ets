@@ -3,6 +3,7 @@ import Image from "next/image";
 import { useDashboardTheme } from "@/components/DashboardShell";
 
 export type Profile = {
+  id?: string;
   name: string;
   age: number;
   city: string;
@@ -13,15 +14,18 @@ export type Profile = {
   bio?: string;
   interests?: string[];
   filters?: string[];
+  online?: boolean;
+  pekerjaan?: string;
 };
 
 type ProfileCardProps = {
   profile: Profile;
   onSelect?: (profile: Profile) => void;
+  onMessage?: (profile: Profile) => void;
 };
 
-export function ProfileCard({ profile, onSelect }: ProfileCardProps) {
-  const { name, age, city, compatibility, vibe, imageUrl } = profile;
+export function ProfileCard({ profile, onSelect, onMessage }: ProfileCardProps) {
+  const { name, age, city, compatibility, vibe, imageUrl, online } = profile;
   const { themeName } = useDashboardTheme();
   const isPink = themeName === "pink";
 
@@ -33,9 +37,12 @@ export function ProfileCard({ profile, onSelect }: ProfileCardProps) {
         badge:
           "bg-white/85 text-rose-400 shadow-lg shadow-rose-200/70",
         vibePill: "bg-[#ffeef5] text-rose-400",
-        statusDot: "bg-emerald-400",
-        ctaButton:
+        statusDotActive: "bg-emerald-400",
+        statusDotInactive: "bg-neutral-300",
+        detailButton:
           "bg-gradient-to-r from-rose-500 via-rose-400 to-orange-300 shadow-rose-200/70",
+        messageButton:
+          "border border-rose-200/70 text-rose-500 hover:border-rose-400 hover:text-rose-500",
       }
     : {
         cardRoot:
@@ -44,10 +51,15 @@ export function ProfileCard({ profile, onSelect }: ProfileCardProps) {
         badge:
           "bg-white/85 text-sky-500 shadow-lg shadow-sky-200/70",
         vibePill: "bg-[#e3f1ff] text-sky-500",
-        statusDot: "bg-sky-400",
-        ctaButton:
+        statusDotActive: "bg-sky-400",
+        statusDotInactive: "bg-neutral-300",
+        detailButton:
           "bg-gradient-to-r from-sky-500 via-indigo-500 to-blue-600 shadow-sky-200/70",
+        messageButton:
+          "border border-sky-200/70 text-sky-500 hover:border-sky-500 hover:text-sky-500",
       };
+
+  const isOnline = online ?? true;
 
   return (
     <article
@@ -90,12 +102,37 @@ export function ProfileCard({ profile, onSelect }: ProfileCardProps) {
         </div>
         <div className="flex items-center justify-between text-xs text-neutral-500">
           <span className="flex items-center gap-2">
-            <span className={`inline-flex h-2 w-2 rounded-full ${styles.statusDot}`} />
-            Online
+            <span
+              className={`inline-flex h-2 w-2 rounded-full ${
+                isOnline ? styles.statusDotActive : styles.statusDotInactive
+              }`}
+            />
+            {isOnline ? "Online" : "Offline"}
           </span>
-          <span className={`rounded-full px-4 py-1 text-xs font-semibold text-white transition group-hover:brightness-110 ${styles.ctaButton}`}>
-            Lihat Detail
-          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelect?.(profile);
+              }}
+              className={`rounded-full px-4 py-1 text-xs font-semibold text-white transition group-hover:brightness-110 ${styles.detailButton}`}
+            >
+              Detail
+            </button>
+            {onMessage ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onMessage(profile);
+                }}
+                className={`rounded-full px-4 py-1 text-xs font-semibold transition ${styles.messageButton}`}
+              >
+                Sapa
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </article>

@@ -4,8 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { AuthApiError } from "@supabase/supabase-js";
 
 import coupleImage from "@/assets/couple-hug.png";
+import { supabase } from "@/lib/supabaseClient";
 
 type FieldErrors = Partial<Record<"email" | "password", string>>;
 type FormMessage =
@@ -32,36 +34,53 @@ export default function LoginPage() {
     setFormErrors({});
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(credentials),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.errors) {
-          const mappedErrors = Object.entries(data.errors).reduce<
-            FieldErrors
-          >((acc, [key, value]) => {
-            if (Array.isArray(value) && value.length > 0) {
-              acc[key as keyof FieldErrors] = value[0];
-            }
-
-            return acc;
-          }, {});
-
-          setFormErrors(mappedErrors);
-        }
+      if (error) {
+        const message =
+          error instanceof AuthApiError && error.status === 400
+            ? "Email atau kata sandi salah."
+            : error.message === "Email not confirmed"
+            ? "Email kamu belum dikonfirmasi. Cek inbox dan klik tautan verifikasi terlebih dahulu."
+            : error.message ?? "Gagal login. Silakan coba lagi.";
 
         setFormMessage({
           type: "error",
-          text: data.message ?? "Gagal login. Silakan periksa kembali data Anda.",
+          text: message,
         });
         return;
+      }
+
+      if (data.user && !data.session) {
+        setFormMessage({
+          type: "error",
+          text: "Email kamu belum diverifikasi. Silakan cek kotak masuk dan konfirmasi sebelum login.",
+        });
+        return;
+      }
+
+      if (data.user) {
+        try {
+          const metadata = data.user.user_metadata ?? {};
+          const profileName =
+            (metadata.full_name as string | undefined) ??
+            (metadata.name as string | undefined);
+
+          await supabase
+            .from("profiles")
+            .upsert(
+              {
+                id: data.user.id,
+                ...(profileName ? { name: profileName } : {}),
+              },
+              { onConflict: "id" },
+            );
+        } catch (profileError) {
+          console.warn("Gagal sinkronisasi profil:", profileError);
+        }
       }
 
       setFormMessage({

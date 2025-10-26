@@ -1,53 +1,171 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { DashboardShell, useDashboardTheme } from "@/components/DashboardShell";
+import { supabase } from "@/lib/supabaseClient";
 
-const profile = {
-  name: "Farah Nadhira",
-  age: 26,
-  city: "Bandung",
-  status: "Online",
-  headline: "My Profile",
+type ProfileData = {
+  name: string;
+  age: number | null;
+  city: string | null;
+  status: string | null;
+  about: string;
+  interests: string[];
+  mainPhoto: string | null;
+  galleryA: string[];
+  galleryB: string[];
+  pekerjaan?: string | null;
+};
+
+const GALLERY_FALLBACK_A = [
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1451471016731-e963a8588be8?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1499696010180-025ef6e1a8f9?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1524230565030-1be7855e6af2?auto=format&fit=crop&w=640&q=80",
+];
+
+const GALLERY_FALLBACK_B = [
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1468252349044-0fdd7a7b1c13?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=640&q=80",
+  "https://images.unsplash.com/photo-1521579971123-1192931a1452?auto=format&fit=crop&w=640&q=80",
+];
+
+const DEFAULT_PROFILE: ProfileData = {
+  name: "Pengguna SoulMatch",
+  age: null,
+  city: null,
+  status: null,
   about:
-    "Pecinta kopi yang hobi menulis cerita pendek dan mengeksplor kafe tema vintage. Lagi mencari teman ngobrol yang siap berbagi tawa dan rencana akhir pekan spontan.",
-  interests: ["Kopi", "Fotografi", "Travel ringan", "Film Indie", "Yoga", "Board Game"],
-  mainPhoto: "https://i.pravatar.cc/320?img=65",
-  galleryA: [
-    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=640&q=80",
-    "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=640&q=80",
-    "https://images.unsplash.com/photo-1451471016731-e963a8588be8?auto=format&fit=crop&w=640&q=80",
-    "https://images.unsplash.com/photo-1499696010180-025ef6e1a8f9?auto=format&fit=crop&w=640&q=80",
-    "https://images.unsplash.com/photo-1524230565030-1be7855e6af2?auto=format&fit=crop&w=640&q=80",
-  ],
-  galleryB: [
-    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=640&q=80",
-    "https://images.unsplash.com/photo-1468252349044-0fdd7a7b1c13?auto=format&fit=crop&w=640&q=80",
-    "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=640&q=80",
-    "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=640&q=80",
-    "https://images.unsplash.com/photo-1521579971123-1192931a1452?auto=format&fit=crop&w=640&q=80",
-  ],
+    "Belum ada deskripsi pribadi. Lengkapi profilmu agar teman baru lebih mudah mengenalmu.",
+  interests: [],
+  mainPhoto: GALLERY_FALLBACK_A[0],
+  galleryA: GALLERY_FALLBACK_A,
+  galleryB: GALLERY_FALLBACK_B,
+  pekerjaan: null,
 };
 
 export default function ProfilePage() {
+  const [profileData, setProfileData] = useState<ProfileData>(DEFAULT_PROFILE);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProfile = useCallback(async (): Promise<ProfileData> => {
+    const { data } = await supabase.auth.getSession();
+    const session = data.session;
+
+    if (!session) {
+      throw new Error("Sesi tidak ditemukan. Silakan login kembali.");
+    }
+
+    const { data: row, error: queryError } = await supabase
+      .from("profiles")
+      .select(
+        "name, age, city, status, pekerjaan, interests, about, main_photo, gallery_a, gallery_b",
+      )
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    if (queryError) {
+      throw new Error("Gagal memuat profil. Coba beberapa saat lagi.");
+    }
+
+    const metadata = session.user.user_metadata ?? {};
+    const fallbackName =
+      (metadata.full_name as string | undefined) ??
+      (metadata.name as string | undefined) ??
+      session.user.email ??
+      DEFAULT_PROFILE.name;
+
+    return {
+      ...DEFAULT_PROFILE,
+      name: row?.name?.trim() ? row.name : fallbackName,
+      age: typeof row?.age === "number" ? row.age : null,
+      city: row?.city ?? null,
+      status: row?.status ?? DEFAULT_PROFILE.status,
+      about:
+        row?.about && row.about.trim().length
+          ? row.about
+          : DEFAULT_PROFILE.about,
+      interests:
+        Array.isArray(row?.interests) && row.interests.length
+          ? row.interests
+          : [],
+      mainPhoto:
+        row?.main_photo && row.main_photo.trim().length
+          ? row.main_photo
+          : DEFAULT_PROFILE.mainPhoto,
+      pekerjaan: row?.pekerjaan ?? null,
+      galleryA:
+        Array.isArray(row?.gallery_a) && row.gallery_a.length
+          ? row.gallery_a
+          : GALLERY_FALLBACK_A,
+      galleryB:
+        Array.isArray(row?.gallery_b) && row.gallery_b.length
+          ? row.gallery_b
+          : GALLERY_FALLBACK_B,
+    };
+  }, []);
+
+  const loadProfile = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await fetchProfile();
+      setProfileData(data);
+    } catch (err) {
+      console.error("[ProfilePage] loadProfile", err);
+      const message =
+        err instanceof Error ? err.message : "Gagal memuat profil.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
+
+  const statusBadge = loading
+    ? "Memuat profil..."
+    : error
+    ? "Gagal memuat profil"
+    : "Profil kamu siap memikat";
+
   return (
     <DashboardShell
       headerChips={[]}
       headerShowSearch={false}
       headerSubtitle="Profil"
       headerHeadline="Kenali vibe hangatmu"
-      headerStatusBadge="Profil kamu siap memikat"
-      profileImageSrc={profile.mainPhoto}
+      headerStatusBadge={statusBadge}
+      profileImageSrc={profileData.mainPhoto}
     >
-      <ProfileContent />
+      <ProfileContent
+        profile={profileData}
+        loading={loading}
+        error={error}
+        onRetry={loadProfile}
+      />
     </DashboardShell>
   );
 }
 
-function ProfileContent() {
+type ProfileContentProps = {
+  profile: ProfileData;
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+};
+
+function ProfileContent({ profile, loading, error, onRetry }: ProfileContentProps) {
   const router = useRouter();
   const { themeName } = useDashboardTheme();
   const isPink = themeName === "pink";
@@ -55,8 +173,15 @@ function ProfileContent() {
   const [interests, setInterests] = useState(profile.interests);
   const [newInterest, setNewInterest] = useState("");
 
+  useEffect(() => {
+    setInterests(profile.interests);
+  }, [profile.interests]);
+
   const handleAddInterest = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (loading) {
+      return;
+    }
     const value = newInterest.trim();
     if (!value) {
       return;
@@ -120,13 +245,26 @@ function ProfileContent() {
           },
     [isPink],
   );
+  const ageCityLabel = useMemo(() => {
+    const parts = [
+      typeof profile.age === "number" ? `${profile.age}` : null,
+      profile.city && profile.city.trim().length ? profile.city : null,
+    ].filter(Boolean);
+    return parts.length ? parts.join(" - ") : "Lengkapi data umur dan lokasi";
+  }, [profile.age, profile.city]);
 
   const handleEditProfile = () => {
     router.push("/dashboard/profile/edit");
   };
 
-  const handleLogout = () => {
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (signOutError) {
+      console.warn("Gagal keluar dari sesi Supabase:", signOutError);
+    } finally {
+      router.push("/login");
+    }
   };
 
   return (
@@ -134,6 +272,25 @@ function ProfileContent() {
       <div
         className={`w-full max-w-4xl space-y-8 rounded-[32px] border p-10 transition-colors duration-500 ${themeStyles.wrapperBorder} ${themeStyles.wrapperBg} ${themeStyles.wrapperShadow}`}
       >
+        {error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-500">
+            <div>{error}</div>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white/85 px-4 py-2 text-xs font-semibold text-rose-500 transition hover:border-rose-300 hover:text-rose-600"
+            >
+              Coba lagi
+            </button>
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4 text-sm text-sky-600">
+            Sedang memuat profil terbaru...
+          </div>
+        ) : null}
+
         <div className="flex flex-col items-center gap-6 text-center transition-colors duration-500">
           <h2
             className={`text-lg font-semibold uppercase tracking-[0.2em] transition-colors duration-500 ${themeStyles.heroAccent}`}
@@ -143,7 +300,7 @@ function ProfileContent() {
           <div className="flex w-full flex-col items-center gap-6 md:flex-row md:items-center md:justify-center md:gap-12 md:text-left">
             <div className="relative h-48 w-48 overflow-hidden rounded-full border-4 border-white shadow-[0_24px_70px_rgba(0,0,0,0.18)]">
               <Image
-                src={profile.mainPhoto}
+                src={profile.mainPhoto || DEFAULT_PROFILE.mainPhoto}
                 alt={profile.name}
                 fill
                 className="object-cover"
@@ -159,20 +316,29 @@ function ProfileContent() {
               <p
                 className={`text-sm font-medium transition-colors duration-500 ${themeStyles.metaText}`}
               >
-                {profile.age} {" - "} {profile.city}
+                {ageCityLabel}
               </p>
+              {profile.pekerjaan ? (
+                <p
+                  className={`text-sm transition-colors duration-500 ${themeStyles.metaText}`}
+                >
+                  {profile.pekerjaan}
+                </p>
+              ) : null}
               <p
                 className={`text-sm transition-colors duration-500 ${themeStyles.statusText}`}
               >
-                Status: {profile.status}
+                Status: {profile.status || "Belum ditentukan"}
               </p>
-              <button
-                className={`mt-4 inline-flex items-center justify-center rounded-full px-6 py-2 text-sm font-semibold transition hover:brightness-105 ${themeStyles.editButton}`}
-                onClick={handleEditProfile}
-                type="button"
-              >
-                Edit Profil
-              </button>
+              <div className="flex flex-wrap justify-center gap-3 md:justify-start">
+                <button
+                  onClick={handleEditProfile}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition hover:brightness-105 ${themeStyles.editButton}`}
+                  type="button"
+                >
+                  Edit Profil
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -192,14 +358,20 @@ function ProfileContent() {
           >
             <h2 className="text-base font-semibold text-neutral-800">Interests</h2>
             <div className="mt-4 flex flex-wrap gap-2">
-              {interests.map((interest) => (
-                <span
-                  key={interest}
-                  className={`rounded-full px-4 py-1 text-xs font-semibold transition-colors duration-500 ${themeStyles.tagBg} ${themeStyles.tagText} ${themeStyles.tagShadow}`}
-                >
-                  {interest}
+              {interests.length ? (
+                interests.map((interest) => (
+                  <span
+                    key={interest}
+                    className={`rounded-full px-4 py-1 text-xs font-semibold transition-colors duration-500 ${themeStyles.tagBg} ${themeStyles.tagText} ${themeStyles.tagShadow}`}
+                  >
+                    {interest}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-neutral-400">
+                  Belum ada interest yang ditambahkan.
                 </span>
-              ))}
+              )}
             </div>
             <form
               onSubmit={handleAddInterest}
@@ -211,10 +383,12 @@ function ProfileContent() {
                 placeholder="Tambah interest baru"
                 className={`flex-1 rounded-full border bg-white px-4 py-2 text-sm text-neutral-600 transition focus:outline-none ${themeStyles.inputBorder} ${themeStyles.inputFocus}`}
                 maxLength={24}
+                disabled={loading}
               />
               <button
                 type="submit"
-                className={`rounded-full px-5 py-2 text-sm font-semibold text-white transition hover:brightness-105 ${themeStyles.addButtonGradient}`}
+                className={`rounded-full px-5 py-2 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 ${themeStyles.addButtonGradient}`}
+                disabled={loading}
               >
                 Tambah
               </button>

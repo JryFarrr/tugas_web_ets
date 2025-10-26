@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { AuthApiError } from "@supabase/supabase-js";
 
 import coupleImage from "@/assets/couple-hug.png";
+import { supabase } from "@/lib/supabaseClient";
 
 type FieldErrors = Partial<
   Record<"email" | "name" | "password" | "confirmPassword", string>
@@ -19,7 +20,6 @@ type FormMessage =
   | null;
 
 export default function SignupPage() {
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<FieldErrors>({});
   const [formMessage, setFormMessage] = useState<FormMessage>(null);
@@ -36,49 +36,98 @@ export default function SignupPage() {
     setFormErrors({});
     setFormMessage(null);
 
+    const validationErrors: FieldErrors = {};
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email || !emailPattern.test(formData.email)) {
+      validationErrors.email = "Masukkan email yang valid.";
+    }
+
+    if (!formData.name || formData.name.trim().length < 2) {
+      validationErrors.name = "Nama minimal 2 karakter.";
+    }
+
+    const passwordPattern = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordPattern.test(formData.password)) {
+      validationErrors.password =
+        "Minimal 8 karakter, sertakan huruf kapital dan angka.";
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      validationErrors.confirmPassword = "Konfirmasi password tidak sesuai.";
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setFormErrors(validationErrors);
+      setFormMessage({
+        type: "error",
+        text: "Periksa kembali data yang kamu isi.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/login` : undefined;
+
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+          },
+          emailRedirectTo: redirectTo,
         },
-        body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      if (error) {
+        const message =
+          error instanceof AuthApiError && error.status === 422
+            ? "Email sudah terdaftar. Silakan login."
+            : error.message ?? "Pendaftaran gagal. Silakan coba lagi.";
 
-      if (!response.ok) {
-        if (data.errors) {
-          const mappedErrors = Object.entries(data.errors).reduce<
-            FieldErrors
-          >((acc, [key, value]) => {
-            if (Array.isArray(value) && value.length > 0) {
-              acc[key as keyof FieldErrors] = value[0];
-            }
-
-            return acc;
-          }, {});
-
-          setFormErrors(mappedErrors);
+        if (
+          error instanceof AuthApiError &&
+          (error.status === 400 || error.status === 422)
+        ) {
+          setFormErrors((prev) => ({
+            ...prev,
+            email: message,
+          }));
         }
 
         setFormMessage({
           type: "error",
-          text:
-            data.message ??
-            "Pendaftaran gagal. Silakan periksa kembali data yang dimasukkan.",
+          text: message,
         });
         return;
       }
 
+      if (data.user) {
+        try {
+          if (data.session) {
+            await supabase
+              .from("profiles")
+              .upsert(
+                {
+                  id: data.user.id,
+                  name: formData.name,
+                },
+                { onConflict: "id" },
+              );
+          }
+        } catch (profileError) {
+          console.warn("Gagal membuat profil awal:", profileError);
+        }
+      }
+
       setFormMessage({
         type: "success",
-        text: "Akun berhasil dibuat! Mengarahkan ke halaman login...",
+        text:
+          "Pendaftaran berhasil! Cek email kamu untuk konfirmasi sebelum login.",
       });
-
-      setTimeout(() => {
-        router.push("/login");
-      }, 900);
     } catch (error) {
       console.error(error);
       setFormMessage({
