@@ -12,7 +12,9 @@ export type Profile = {
   imageUrl: string;
   occupation?: string;
   bio?: string;
+  about?: string | null;
   interests?: string[];
+  interestTag?: string;
   filters?: string[];
   online?: boolean;
   pekerjaan?: string;

@@ -112,9 +112,9 @@ type MatchProfile = Profile & {
   id: string;
   city: string;
   age: number;
-  pekerjaan: string | null;
+  pekerjaan?: string;
   interests: string[];
-  about: string | null;
+  about?: string | null;
   interestTag: string;
   online: boolean;
 };
@@ -169,7 +169,7 @@ function transformProfile(profile: ApiProfile): MatchProfile {
     vibe,
     imageUrl: profile.mainPhoto ?? `${FALLBACK_IMAGE}?u=${profile.id}`,
     occupation: profile.pekerjaan ?? undefined,
-    pekerjaan: profile.pekerjaan,
+    pekerjaan: profile.pekerjaan ?? undefined,
     interests,
     about: profile.about,
     interestTag,
