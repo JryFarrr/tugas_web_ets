@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
+import type { RemotePattern } from "next/dist/shared/lib/image-config";
 
 const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
   : undefined;
 
-const baseRemotePatterns = [
+const baseRemotePatterns: RemotePattern[] = [
   {
     protocol: "https",
     hostname: "images.unsplash.com",
@@ -13,9 +14,9 @@ const baseRemotePatterns = [
     protocol: "https",
     hostname: "i.pravatar.cc",
   },
-] as Array<NonNullable<NextConfig["images"]>["remotePatterns"][number]>;
+];
 
-const remotePatterns = supabaseHost
+const remotePatterns: RemotePattern[] = supabaseHost
   ? [
       ...baseRemotePatterns,
       {
