@@ -36,6 +36,9 @@ const GALLERY_FALLBACK_B = [
   "https://images.unsplash.com/photo-1521579971123-1192931a1452?auto=format&fit=crop&w=640&q=80",
 ];
 
+const PRIMARY_FALLBACK_PHOTO =
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=640&q=80";
+
 const DEFAULT_PROFILE: ProfileData = {
   name: "Pengguna SoulMatch",
   age: null,
@@ -44,7 +47,7 @@ const DEFAULT_PROFILE: ProfileData = {
   about:
     "Belum ada deskripsi pribadi. Lengkapi profilmu agar teman baru lebih mudah mengenalmu.",
   interests: [],
-  mainPhoto: GALLERY_FALLBACK_A[0],
+  mainPhoto: PRIMARY_FALLBACK_PHOTO,
   galleryA: GALLERY_FALLBACK_A,
   galleryB: GALLERY_FALLBACK_B,
   pekerjaan: null,
@@ -99,7 +102,7 @@ export default function ProfilePage() {
       mainPhoto:
         row?.main_photo && row.main_photo.trim().length
           ? row.main_photo
-          : DEFAULT_PROFILE.mainPhoto,
+          : PRIMARY_FALLBACK_PHOTO,
       pekerjaan: row?.pekerjaan ?? null,
       galleryA:
         Array.isArray(row?.gallery_a) && row.gallery_a.length
@@ -146,7 +149,11 @@ export default function ProfilePage() {
       headerSubtitle="Profil"
       headerHeadline="Kenali vibe hangatmu"
       headerStatusBadge={statusBadge}
-      profileImageSrc={profileData.mainPhoto ?? DEFAULT_PROFILE.mainPhoto}
+      profileImageSrc={
+        profileData.mainPhoto && profileData.mainPhoto.trim().length
+          ? profileData.mainPhoto
+          : PRIMARY_FALLBACK_PHOTO
+      }
     >
       <ProfileContent
         profile={profileData}
