@@ -146,7 +146,7 @@ export default function ProfilePage() {
       headerSubtitle="Profil"
       headerHeadline="Kenali vibe hangatmu"
       headerStatusBadge={statusBadge}
-      profileImageSrc={profileData.mainPhoto}
+      profileImageSrc={profileData.mainPhoto ?? DEFAULT_PROFILE.mainPhoto}
     >
       <ProfileContent
         profile={profileData}
