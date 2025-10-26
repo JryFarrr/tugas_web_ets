@@ -41,26 +41,6 @@ export async function POST(request: Request) {
   const { email, name, password } = parsed.data;
 
   try {
-    const { data: existingUsers, error: listError } =
-      await supabaseAdmin.auth.admin.listUsers({
-        email,
-        perPage: 1,
-      });
-
-    if (listError) {
-      console.warn("[register] Gagal memeriksa user existing:", listError);
-    }
-
-    if (existingUsers?.users?.length) {
-      return NextResponse.json(
-        {
-          status: "error",
-          message: "Email sudah terdaftar. Silakan login.",
-        },
-        { status: 409 }
-      );
-    }
-
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
