@@ -14,7 +14,7 @@ type ProfileData = {
   status: string | null;
   about: string;
   interests: string[];
-  mainPhoto: string | null;
+  mainPhoto: string;
   galleryA: string[];
   galleryB: string[];
   pekerjaan?: string | null;
@@ -142,6 +142,11 @@ export default function ProfilePage() {
     ? "Gagal memuat profil"
     : "Profil kamu siap memikat";
 
+  const profileImageSrc: string =
+    profileData.mainPhoto.trim().length > 0
+      ? profileData.mainPhoto
+      : PRIMARY_FALLBACK_PHOTO;
+
   return (
     <DashboardShell
       headerChips={[]}
@@ -149,11 +154,7 @@ export default function ProfilePage() {
       headerSubtitle="Profil"
       headerHeadline="Kenali vibe hangatmu"
       headerStatusBadge={statusBadge}
-      profileImageSrc={
-        profileData.mainPhoto && profileData.mainPhoto.trim().length
-          ? profileData.mainPhoto
-          : PRIMARY_FALLBACK_PHOTO
-      }
+      profileImageSrc={profileImageSrc}
     >
       <ProfileContent
         profile={profileData}
