@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createSupabaseRouteClient } from "@/lib/supabaseRouteClient";
 
 const registerSchema = z
   .object({
@@ -26,6 +26,8 @@ export async function POST(request: Request) {
   const payload = await request.json();
   const parsed = registerSchema.safeParse(payload);
 
+  const supabase = createSupabaseRouteClient();
+
   if (!parsed.success) {
     return NextResponse.json(
       {
@@ -39,11 +41,11 @@ export async function POST(request: Request) {
   const { email, name, password } = parsed.data;
 
   try {
-    const existing = await prisma.user.findUnique({
-      where: { email },
-    });
+    const { data: existingUser } = await supabaseAdmin.auth.admin.getUserByEmail(
+      email,
+    );
 
-    if (existing) {
+    if (existingUser) {
       return NextResponse.json(
         {
           status: "error",
@@ -53,28 +55,62 @@ export async function POST(request: Request) {
       );
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name,
-        passwordHash,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/login`,
       },
     });
+
+    if (error) {
+      const status = error.message === "User already registered" ? 409 : 400;
+      return NextResponse.json(
+        {
+          status: "error",
+          message:
+            status === 409
+              ? "Email sudah terdaftar. Silakan login."
+              : error.message ?? "Gagal mendaftarkan akun.",
+        },
+        { status },
+      );
+    }
+
+    if (data.user) {
+      try {
+        await supabaseAdmin
+          .from("profiles")
+          .upsert(
+            {
+              id: data.user.id,
+              name,
+              email,
+            },
+            { onConflict: "id" },
+          );
+      } catch (profileError) {
+        console.warn("[register] Gagal membuat profil default:", profileError);
+      }
+    }
 
     return NextResponse.json(
       {
         status: "success",
-        user,
+        user: data.user
+          ? {
+              id: data.user.id,
+              email: data.user.email,
+              name,
+              emailConfirmedAt: data.user.email_confirmed_at,
+            }
+          : null,
+        message: data.session
+          ? "Pendaftaran berhasil."
+          : "Pendaftaran berhasil. Silakan cek email untuk verifikasi sebelum login.",
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error(error);

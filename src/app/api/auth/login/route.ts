@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 
-import { prisma } from "@/lib/prisma";
+import { createSupabaseRouteClient } from "@/lib/supabaseRouteClient";
 
 const loginSchema = z.object({
   email: z.string().email("Email tidak valid"),
@@ -12,6 +11,8 @@ const loginSchema = z.object({
 export async function POST(request: Request) {
   const payload = await request.json();
   const parsed = loginSchema.safeParse(payload);
+
+  const supabase = createSupabaseRouteClient();
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -26,27 +27,29 @@ export async function POST(request: Request) {
   const { email, password } = parsed.data;
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    if (!user) {
+    if (error) {
       return NextResponse.json(
         {
           status: "error",
-          message: "Akun tidak ditemukan.",
+          message:
+            error.message === "Invalid login credentials"
+              ? "Kombinasi email dan password salah."
+              : error.message ?? "Gagal login. Silakan coba lagi.",
         },
-        { status: 401 }
+        { status: error.message === "Invalid login credentials" ? 401 : 400 },
       );
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-
-    if (!isValidPassword) {
+    if (!data.user) {
       return NextResponse.json(
         {
           status: "error",
-          message: "Kombinasi email dan password salah.",
+          message: "Tidak dapat menemukan akun dengan kredensial tersebut.",
         },
         { status: 401 }
       );
@@ -55,10 +58,15 @@ export async function POST(request: Request) {
     return NextResponse.json({
       status: "success",
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
+        id: data.user.id,
+        email: data.user.email,
+        name:
+          (data.user.user_metadata?.full_name as string | undefined) ??
+          (data.user.user_metadata?.name as string | undefined) ??
+          data.user.email ??
+          "Pengguna",
       },
+      session: data.session ?? null,
     });
   } catch (error) {
     console.error(error);
