@@ -113,7 +113,6 @@ type MatchProfile = Profile & {
   interests: string[];
   about?: string | null;
   interestTag: string;
-  online: boolean;
 };
 
 type SelectedFilters = {
