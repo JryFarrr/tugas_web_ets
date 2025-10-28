@@ -7,7 +7,6 @@ export type Profile = {
   name: string;
   age: number;
   city: string;
-  compatibility: number;
   vibe: string;
   imageUrl: string;
   occupation?: string;
@@ -16,8 +15,9 @@ export type Profile = {
   interests?: string[];
   interestTag?: string;
   filters?: string[];
-  online?: boolean;
   pekerjaan?: string;
+  compatibility?: number;
+  online?: boolean;
 };
 
 type ProfileCardProps = {
@@ -27,7 +27,7 @@ type ProfileCardProps = {
 };
 
 export function ProfileCard({ profile, onSelect, onMessage }: ProfileCardProps) {
-  const { name, age, city, compatibility, vibe, imageUrl, online } = profile;
+  const { name, age, city, vibe, imageUrl } = profile;
   const { themeName } = useDashboardTheme();
   const isPink = themeName === "pink";
 
@@ -61,8 +61,6 @@ export function ProfileCard({ profile, onSelect, onMessage }: ProfileCardProps) 
           "border border-sky-200/70 text-sky-500 hover:border-sky-500 hover:text-sky-500",
       };
 
-  const isOnline = online ?? true;
-
   return (
     <article
       role="button"
@@ -85,9 +83,6 @@ export function ProfileCard({ profile, onSelect, onMessage }: ProfileCardProps) 
           className="object-cover transition duration-700 group-hover:scale-105"
         />
         <div className={`absolute inset-0 ${styles.imageOverlay}`} />
-        <div className={`absolute right-4 top-4 rounded-2xl px-3 py-1 text-xs font-semibold ${styles.badge}`}>
-          {compatibility}% cocok
-        </div>
       </div>
 
       <div className="space-y-3 p-5">
@@ -102,15 +97,7 @@ export function ProfileCard({ profile, onSelect, onMessage }: ProfileCardProps) 
             {vibe}
           </span>
         </div>
-        <div className="flex items-center justify-between text-xs text-neutral-500">
-          <span className="flex items-center gap-2">
-            <span
-              className={`inline-flex h-2 w-2 rounded-full ${
-                isOnline ? styles.statusDotActive : styles.statusDotInactive
-              }`}
-            />
-            {isOnline ? "Online" : "Offline"}
-          </span>
+        <div className="flex justify-end text-xs text-neutral-500">
           <div className="flex gap-2">
             <button
               type="button"

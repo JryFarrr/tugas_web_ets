@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
@@ -33,6 +32,19 @@ type ChatMessage = {
   fromMe: boolean;
 };
 
+type PartnerProfileDetail = {
+  id: string;
+  name: string | null;
+  age: number | null;
+  city: string | null;
+  pekerjaan: string | null;
+  about: string | null;
+  interests: string[];
+  galleryA: string[];
+  galleryB: string[];
+  mainPhoto: string | null;
+};
+
 export default function MessagesPageClient() {
   return (
     <DashboardShell
@@ -59,6 +71,10 @@ function MessagesContent() {
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [messageDraft, setMessageDraft] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailProfile, setDetailProfile] = useState<PartnerProfileDetail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
   const { themeName } = useDashboardTheme();
@@ -119,6 +135,59 @@ function MessagesContent() {
     }
   }, []);
 
+  const handleOpenPartnerDetail = useCallback(async (partnerId?: string | null) => {
+    if (!partnerId) {
+      return;
+    }
+    setDetailOpen(true);
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "id, name, age, city, pekerjaan, about, interests, gallery_a, gallery_b, main_photo",
+        )
+        .eq("id", partnerId)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data) {
+        setDetailProfile(null);
+        setDetailError("Profil tidak ditemukan.");
+        return;
+      }
+
+      setDetailProfile({
+        id: data.id,
+        name: data.name ?? null,
+        age: data.age ?? null,
+        city: data.city ?? null,
+        pekerjaan: data.pekerjaan ?? null,
+        about: data.about ?? null,
+        interests: Array.isArray(data.interests) ? data.interests : [],
+        galleryA: Array.isArray(data.gallery_a) ? data.gallery_a : [],
+        galleryB: Array.isArray(data.gallery_b) ? data.gallery_b : [],
+        mainPhoto: data.main_photo ?? null,
+      });
+    } catch (err) {
+      console.error("[Messages] gagal memuat detail profil", err);
+      setDetailProfile(null);
+      setDetailError("Gagal memuat detail profil.");
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const handleClosePartnerDetail = useCallback(() => {
+    setDetailOpen(false);
+    setDetailLoading(false);
+    setDetailProfile(null);
+    setDetailError(null);
+  }, []);
   useEffect(() => {
     void fetchConversations();
   }, [fetchConversations]);
@@ -421,9 +490,6 @@ function MessagesContent() {
                           {lastMessage ? lastMessage.content : "Belum ada pesan."}
                         </p>
                       </div>
-                      <span className="text-xs font-semibold text-emerald-500">
-                        {conversation.compatibility}%
-                      </span>
                     </button>
                   </li>
                 );
@@ -437,7 +503,14 @@ function MessagesContent() {
             <>
               <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/70 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-neutral-200">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleOpenPartnerDetail(selectedConversation.partner.id)
+                    }
+                    className="relative h-14 w-14 overflow-hidden rounded-2xl bg-neutral-200 transition hover:scale-[1.02]"
+                    aria-label="Lihat detail profil"
+                  >
                     {selectedConversation.partner.photoUrl ? (
                       <Image
                         src={selectedConversation.partner.photoUrl}
@@ -446,7 +519,7 @@ function MessagesContent() {
                         className="object-cover"
                       />
                     ) : null}
-                  </div>
+                  </button>
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">
                       {selectedConversation.partner.name ?? "Pengguna SoulMatch"}
@@ -457,25 +530,12 @@ function MessagesContent() {
                     <p className="text-sm text-neutral-500">
                       {selectedConversation.partner.city ?? "Lokasi tak diketahui"}
                       {selectedConversation.partner.pekerjaan
-                        ? ` • ${selectedConversation.partner.pekerjaan}`
+                        ? ` - ${selectedConversation.partner.pekerjaan}`
                         : ""}
-                    </p>
-                    <p className="text-xs text-emerald-500">
-                      {selectedConversation.compatibility}% cocok
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 text-xs text-neutral-500">
-                  <Link
-                    href={selectedConversation.partner.id
-                      ? `https://wa.me/${selectedConversation.partner.id}`
-                      : "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-emerald-300/60 px-3 py-2 font-semibold text-emerald-500 transition hover:bg-emerald-500/10"
-                  >
-                    Kontak WA
-                  </Link>
                   {selectedConversation.partner.about ? (
                     <p className="max-w-xs text-right text-neutral-400">
                       “{selectedConversation.partner.about}”
@@ -559,6 +619,122 @@ function MessagesContent() {
           )}
         </div>
       </div>
+      {detailOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-10">
+          <div className="relative w-full max-w-2xl overflow-hidden rounded-[32px] border border-white/70 bg-white/95 shadow-[0_45px_110px_rgba(15,23,42,0.22)]">
+            <button
+              type="button"
+              onClick={handleClosePartnerDetail}
+              className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-neutral-500 shadow-lg transition hover:text-neutral-800"
+              aria-label="Tutup detail profil"
+            >
+              X
+            </button>
+            <div className="grid gap-6 md:grid-cols-[1fr,1.1fr]">
+              <div className="relative h-64 md:h-full">
+                {detailProfile?.mainPhoto ? (
+                  <Image
+                    src={detailProfile.mainPhoto}
+                    alt={detailProfile.name ?? "Foto profil"}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 240px"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-neutral-200 text-sm text-neutral-500">
+                    Foto belum tersedia
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent p-6 text-white">
+                  <p className="text-lg font-semibold">
+                    {detailProfile?.name ?? "Pengguna SoulMatch"}
+                    {detailProfile?.age ? `, ${detailProfile.age}` : ""}
+                  </p>
+                  <p className="text-sm text-white/80">
+                    {detailProfile?.city ?? "Lokasi belum diatur"}
+                    {detailProfile?.pekerjaan ? ` - ${detailProfile.pekerjaan}` : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-6 p-6 text-sm text-neutral-600">
+                {detailLoading ? (
+                  <p>Memuat detail profil...</p>
+                ) : detailError ? (
+                  <p className="text-rose-500">{detailError}</p>
+                ) : detailProfile ? (
+                  <>
+                    <div>
+                      <h3 className="text-sm font-semibold text-neutral-700">Tentang</h3>
+                      <p className="mt-2 leading-relaxed text-neutral-500">
+                        {detailProfile.about
+                          ? detailProfile.about
+                          : "Belum ada deskripsi yang ditambahkan."}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-neutral-700">Interest</h3>
+                      {detailProfile.interests.length ? (
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                          {detailProfile.interests.map((interest) => (
+                            <span
+                              key={interest}
+                              className="rounded-full bg-neutral-100 px-3 py-1 font-medium text-neutral-500"
+                            >
+                              {interest}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-neutral-400">
+                          Belum ada interest yang ditambahkan.
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-neutral-700">Photos</h3>
+                      {detailProfile.galleryA.length ? (
+                        <div className="mt-3 grid grid-cols-3 gap-3">
+                          {detailProfile.galleryA.slice(0, 6).map((src) => (
+                            <div
+                              key={src}
+                              className="relative h-24 w-full overflow-hidden rounded-2xl"
+                            >
+                              <Image src={src} alt="Gallery photo" fill className="object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-neutral-400">
+                          Belum ada foto diunggah.
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-neutral-700">Moments</h3>
+                      {detailProfile.galleryB.length ? (
+                        <div className="mt-3 grid grid-cols-3 gap-3">
+                          {detailProfile.galleryB.slice(0, 6).map((src) => (
+                            <div
+                              key={src}
+                              className="relative h-24 w-full overflow-hidden rounded-2xl"
+                            >
+                              <Image src={src} alt="Moment photo" fill className="object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-neutral-400">
+                          Belum ada momen yang dibagikan.
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

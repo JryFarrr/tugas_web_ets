@@ -23,7 +23,6 @@ export function ProfileDetail({ profile, onClose }: ProfileDetailProps) {
         closeButton:
           "bg-white/85 text-neutral-400 shadow-rose-100/60 hover:text-rose-400",
         vibePill: "bg-[#ffeef5] text-rose-400",
-        compatText: "text-rose-400",
         interestPill: "bg-[#ffeef5] text-rose-400 shadow-inner shadow-rose-100/60",
         primaryButton:
           "bg-gradient-to-r from-rose-500 via-rose-400 to-orange-300 text-white shadow-lg shadow-rose-200/70 hover:brightness-105",
@@ -37,7 +36,6 @@ export function ProfileDetail({ profile, onClose }: ProfileDetailProps) {
         closeButton:
           "bg-white/85 text-neutral-400 shadow-sky-100/60 hover:text-sky-500",
         vibePill: "bg-[#e5f2ff] text-sky-500",
-        compatText: "text-sky-500",
         interestPill: "bg-[#e5f2ff] text-sky-500 shadow-inner shadow-sky-100/60",
         primaryButton:
           "bg-gradient-to-r from-sky-500 via-indigo-500 to-blue-600 text-white shadow-lg shadow-sky-200/70 hover:brightness-105",
@@ -97,20 +95,16 @@ export function ProfileDetail({ profile, onClose }: ProfileDetailProps) {
                 </p>
               ) : null}
               <span className="inline-flex items-center gap-2 rounded-full bg-white/30 px-3 py-1 text-xs font-semibold backdrop-blur-md">
-                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                 {profile.city}
               </span>
             </div>
           </div>
           <div className="space-y-6 p-6">
-            <div className="flex items-center justify-between">
+            <div>
               <span
                 className={`rounded-full px-4 py-2 text-xs font-semibold ${styles.vibePill}`}
               >
                 {profile.vibe}
-              </span>
-              <span className={`text-sm font-semibold ${styles.compatText}`}>
-                {profile.compatibility}% kecocokan
               </span>
             </div>
 

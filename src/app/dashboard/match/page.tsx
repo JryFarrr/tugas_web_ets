@@ -19,8 +19,6 @@ type DropdownFilterOption = {
   customPlaceholder?: string;
 };
 
-type FilterOption = DropdownFilterOption | { id: "online"; label: string; type: "toggle" };
-
 const AGE_RANGES = [
   "Semua",
   "18-22",
@@ -68,7 +66,7 @@ const INTEREST_OPTIONS = [
   "Permainan",
 ];
 
-const filterOptions: FilterOption[] = [
+const filterOptions: DropdownFilterOption[] = [
   { id: "age", label: "Umur", type: "dropdown", options: AGE_RANGES },
   {
     id: "location",
@@ -94,7 +92,6 @@ const filterOptions: FilterOption[] = [
     allowCustom: true,
     customPlaceholder: "Ketik interest lain...",
   },
-  { id: "online", label: "Online", type: "toggle" },
 ];
 
 type ApiProfile = {
@@ -124,7 +121,6 @@ type SelectedFilters = {
   location: string;
   pekerjaan: string;
   interest: string;
-  online: boolean;
 };
 
 const DEFAULT_FILTERS: SelectedFilters = {
@@ -132,7 +128,6 @@ const DEFAULT_FILTERS: SelectedFilters = {
   location: "",
   pekerjaan: "",
   interest: "",
-  online: false,
 };
 
 const FALLBACK_IMAGE = "https://i.pravatar.cc/320";
@@ -144,14 +139,6 @@ function computeCompatibility(seed: string) {
     hash |= 0;
   }
   return 70 + Math.abs(hash % 25);
-}
-
-function computeOnline(seed: string) {
-  let hash = 0;
-  for (const char of seed) {
-    hash = char.charCodeAt(0) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash % 2) === 1;
 }
 
 function transformProfile(profile: ApiProfile): MatchProfile {
@@ -173,7 +160,6 @@ function transformProfile(profile: ApiProfile): MatchProfile {
     interests,
     about: profile.about,
     interestTag,
-    online: computeOnline(profile.id),
   };
 }
 
@@ -296,9 +282,6 @@ export default function MatchPage() {
         }
       }
 
-      if (selectedFilters.online && !profile.online) {
-        return false;
-      }
 
       return true;
     });
@@ -330,10 +313,6 @@ export default function MatchPage() {
     setSelectedFilters((prev) => ({ ...prev, [id]: "" }));
     setCustomInputs((prev) => ({ ...prev, [id]: "" }));
     setOpenDropdown(null);
-  };
-
-  const handleToggleOnline = () => {
-    setSelectedFilters((prev) => ({ ...prev, online: !prev.online }));
   };
 
 const handleMessageProfile = useCallback(
@@ -404,7 +383,6 @@ const handleMessageProfile = useCallback(
         openDropdown={openDropdown}
         onOpenDropdownChange={setOpenDropdown}
         onDropdownSelect={handleDropdownSelect}
-        onToggleOnline={handleToggleOnline}
         onSelectProfile={setSelectedProfile}
         onMessageProfile={handleMessageProfile}
         customInputs={customInputs}
@@ -427,7 +405,6 @@ type MatchContentProps = {
   openDropdown: DropdownFilterId | null;
   onOpenDropdownChange: (id: DropdownFilterId | null) => void;
   onDropdownSelect: (id: DropdownFilterId, value: string) => void;
-  onToggleOnline: () => void;
   onSelectProfile: (profile: Profile) => void;
   onMessageProfile: (profile: Profile) => void;
   customInputs: Record<DropdownFilterId, string>;
@@ -447,7 +424,6 @@ function MatchContent({
   openDropdown,
   onOpenDropdownChange,
   onDropdownSelect,
-  onToggleOnline,
   onSelectProfile,
   onMessageProfile,
   customInputs,
@@ -519,19 +495,6 @@ function MatchContent({
           <span className="text-sm font-semibold text-neutral-500">Filters</span>
           <div className="flex flex-wrap gap-2">
             {filterOptions.map((filter) => {
-              if (filter.type === "toggle") {
-                const isActive = selectedFilters.online;
-                return (
-                  <button
-                    key={filter.id}
-                    onClick={onToggleOnline}
-                    className={`rounded-full px-4 py-2 text-xs font-semibold transition ${isActive ? styles.filterActive : styles.filterInactive}`}
-                  >
-                    {filter.label}
-                  </button>
-                );
-              }
-
               const value = selectedFilters[filter.id];
               const displayLabel = value ? `${filter.label}: ${value}` : filter.label;
               const isActive = Boolean(value);
