@@ -712,7 +712,7 @@ function MessagesContent() {
                           {detailProfile.galleryA.slice(0, 6).map((src) => (
                             <div
                               key={src}
-                              className="relative h-24 w-full overflow-hidden rounded-2xl"
+                              className="relative aspect-square w-full overflow-hidden rounded-2xl"
                             >
                               <Image src={src} alt="Gallery photo" fill className="object-cover" />
                             </div>
@@ -731,7 +731,7 @@ function MessagesContent() {
                           {detailProfile.galleryB.slice(0, 6).map((src) => (
                             <div
                               key={src}
-                              className="relative h-24 w-full overflow-hidden rounded-2xl"
+                              className="relative aspect-square w-full overflow-hidden rounded-2xl"
                             >
                               <Image src={src} alt="Moment photo" fill className="object-cover" />
                             </div>
