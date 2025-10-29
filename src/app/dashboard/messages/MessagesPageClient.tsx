@@ -143,40 +143,55 @@ function MessagesContent() {
     setDetailLoading(true);
     setDetailError(null);
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select(
-          "id, name, age, city, pekerjaan, about, interests, gallery_a, gallery_b, main_photo",
-        )
-        .eq("id", partnerId)
-        .maybeSingle();
-
-      if (error) {
-        throw error;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setDetailError("Sesi tidak ditemukan. Silakan login kembali.");
+        setDetailLoading(false);
+        return;
       }
 
-      if (!data) {
+      const response = await fetch(`/api/messages/profile?partnerId=${partnerId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message ?? "Gagal memuat detail profil.");
+      }
+
+      const body = (await response.json()) as { profile: PartnerProfileDetail | null };
+
+      if (!body.profile) {
         setDetailProfile(null);
         setDetailError("Profil tidak ditemukan.");
         return;
       }
 
       setDetailProfile({
-        id: data.id,
-        name: data.name ?? null,
-        age: data.age ?? null,
-        city: data.city ?? null,
-        pekerjaan: data.pekerjaan ?? null,
-        about: data.about ?? null,
-        interests: Array.isArray(data.interests) ? data.interests : [],
-        galleryA: Array.isArray(data.gallery_a) ? data.gallery_a : [],
-        galleryB: Array.isArray(data.gallery_b) ? data.gallery_b : [],
-        mainPhoto: data.main_photo ?? null,
+        id: body.profile.id,
+        name: body.profile.name ?? null,
+        age: body.profile.age ?? null,
+        city: body.profile.city ?? null,
+        pekerjaan: body.profile.pekerjaan ?? null,
+        about: body.profile.about ?? null,
+        interests: Array.isArray(body.profile.interests)
+          ? body.profile.interests
+          : [],
+        galleryA: Array.isArray(body.profile.galleryA) ? body.profile.galleryA : [],
+        galleryB: Array.isArray(body.profile.galleryB) ? body.profile.galleryB : [],
+        mainPhoto: body.profile.mainPhoto ?? null,
       });
     } catch (err) {
       console.error("[Messages] gagal memuat detail profil", err);
       setDetailProfile(null);
-      setDetailError("Gagal memuat detail profil.");
+      setDetailError(
+        err instanceof Error ? err.message : "Gagal memuat detail profil.",
+      );
     } finally {
       setDetailLoading(false);
     }
